@@ -1,0 +1,20 @@
+import board as IMU
+import busio
+import adafruit_bno055
+import subprocess
+import os
+import matplotlib
+
+
+IMUi2c = busio.I2C(IMU.SCL, IMU.SDA)
+IMUSens = adafruit_bno055.BNO055_I2C(IMUi2c)
+
+while True: #in main program turn this into graphs and send to flight data station
+    print("Temp: ",IMUSens.temperature)
+    print("Acceleration: ",IMUSens.acceleration)
+    print("Magnetic: ",IMUSens.magnetic)
+    print("Gyro: ",IMUSens.gyro)
+    print("Euler: ",IMUSens.euler)
+    print("Quat: ",IMUSens.quaternion)
+    print("Linear Acceleration: ",IMUSens.linear_acceleration)
+    print("Gravity: ",IMUSens.gravity)
