@@ -1,15 +1,61 @@
+from __future__ import division
 import board as IMU
 import busio
 import adafruit_bno055
 import subprocess
 import os
-import matplotlib
+from signal import signal, SIGTERM, SIGHUP, pause
+from rpi_lcd import LCD
+import smbus
+import Adafruit_BMP.BMP085 as BMP180
+import time
+import Adafruit_PCA9685 as Servocont
 
 
+#Define Sensors and hardware
+sensor = BMP180.BMP085()
 IMUi2c = busio.I2C(IMU.SCL, IMU.SDA)
 IMUSens = adafruit_bno055.BNO055_I2C(IMUi2c)
+lcd = LCD()
+pwm = Servocont.PCA9685(address=0x70)
 
+#servo constraints
+servo_min = 150
+servo_max = 600
+#I dont know but dont delete
+def set_servo_pulse(channel, pulse):
+    pulse_length = 1000000
+    pulse_length //=60
+    pulse_length //=4096
+    pulse *= 1000
+    pulse //= pulse_lenth
+    pwm.set_pwm(channel, 4, pulse)
+    
+pwm.set_pwm_freq(60)
+#servo control block only edit this
+while True:
+    lcd.text("Servo move: ", 1)
+    lcd.text("1", 2)
+    pwm.set_pwm(4,4,servo_min)
+    time.sleep(1)
+    lcd.text("Servo move: ", 1)
+    lcd.text("2", 2)
+    pwm.set_pwm(4,4,servo_max)
+    time.sleep(1)
+    lcd.text("Servo move: ", 1)
+    lcd.text("3", 2)
+    pwm.set_pwm(4,4,servo_min)
+    time.sleep(1)
+    lcd.text("Servo move: ", 1)
+    lcd.text("4", 2)
+    pwm.set_pwm(4,4,servo_max)
+    time.sleep(1)
+    break
+    
+
+#Main loop
 while True: #in main program turn this into graphs and send to flight data station
+    #IMU
     print("Temp: ",IMUSens.temperature)
     print("Acceleration: ",IMUSens.acceleration)
     print("Magnetic: ",IMUSens.magnetic)
@@ -18,3 +64,14 @@ while True: #in main program turn this into graphs and send to flight data stati
     print("Quat: ",IMUSens.quaternion)
     print("Linear Acceleration: ",IMUSens.linear_acceleration)
     print("Gravity: ",IMUSens.gravity)
+    #Barometer
+    print('Temp = {0:0.2f} *C'.format(sensor.read_temperature()))
+    print('Pressure = {0:0.2f} Pa'.format(sensor.read_pressure()))
+    print('Altitude = {0:0.2f} m'.format(sensor.read_altitude()))
+    print('Sealevel Pressure = {0:0.2f} Pa'.format(sensor.read_sealevel_pressure()))
+    #Define Altitude
+    altitude = ('{0:0.2f} m'.format(sensor.read_altitude()))
+    #Write to LCD screen
+    lcd.text("Altitude: ", 1)
+    lcd.text(altitude, 2)
+    #break # uncomment to send code once
