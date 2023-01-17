@@ -1,0 +1,116 @@
+from enum import Enum
+from __future__ import division
+import time
+import board as IMU
+import busio
+import adafruit_bno055
+import subprocess
+import os
+from signal import signal, SIGTERM, SIGHUP, pause
+from rpi_lcd import LCD
+import smbus
+import Adafruit_BMP.BMP085 as BMP180
+import time
+import Adafruit_PCA9685 as Servocont
+
+
+# Define Sensors and hardware
+sensor = BMP180.BMP085()
+IMUi2c = busio.I2C(IMU.SCL, IMU.SDA)
+IMUSens = adafruit_bno055.BNO055_I2C(IMUi2c)
+lcd = LCD()
+pwm = Servocont.PCA9685(address=0x70)
+
+# servo constraints
+servo_min = 150
+servo_max = 600
+
+
+# I dont know but dont delete
+def set_servo_pulse(channel, pulse):
+    pulse_length = 1000000
+    pulse_length //= 60
+    pulse_length //= 4096
+    pulse *= 1000
+    pulse //= pulse_lenth
+    pwm.set_pwm(channel, 4, pulse)
+
+pwm.set_pwm_freq(60)
+
+# Define states as Enum
+class State(Enum):
+    Initial = 0
+    State1 = 1
+    Inter = 2
+    State2 = 3
+    Final = 4
+
+
+class StateMachine:
+    _state = State.Initial  # Set initial state
+    _start_time = time.time()
+
+    def run(self):
+        while True:  # Loop forever
+            match self._state:
+                case State.Initial:
+                    #Control Stuff Spot
+                    lcd.text("Servo move: ", 1)
+                    lcd.text("1", 2)
+                    pwm.set_pwm(4, 4, servo_min)
+                    time.sleep(1)
+                    lcd.text("Servo move: ", 1)
+                    lcd.text("2", 2)
+                    pwm.set_pwm(4, 4, servo_max)
+                    time.sleep(1)
+                    lcd.text("Servo move: ", 1)
+                    lcd.text("3", 2)
+                    pwm.set_pwm(4, 4, servo_min)
+                    time.sleep(1)
+                    lcd.text("Servo move: ", 1)
+                    lcd.text("4", 2)
+                    pwm.set_pwm(4, 4, servo_max)
+                    time.sleep(1)
+                    #break
+                    # Alway move to next state
+                    self._state = State.State1
+                    # End of Control Stuff Spot
+                case State.State1:
+                    # Do some other stuff
+                    # IMU
+                    print("Temp: ", IMUSens.temperature)
+                    print("Acceleration: ", IMUSens.acceleration)
+                    print("Magnetic: ", IMUSens.magnetic)
+                    print("Gyro: ", IMUSens.gyro)
+                    print("Euler: ", IMUSens.euler)
+                    print("Quat: ", IMUSens.quaternion)
+                    print("Linear Acceleration: ", IMUSens.linear_acceleration)
+                    print("Gravity: ", IMUSens.gravity)
+                    # Barometer
+                    print('Temp = {0:0.2f} *C'.format(sensor.read_temperature()))
+                    print('Pressure = {0:0.2f} Pa'.format(sensor.read_pressure()))
+                    print('Altitude = {0:0.2f} m'.format(sensor.read_altitude()))
+                    print('Sealevel Pressure = {0:0.2f} Pa'.format(sensor.read_sealevel_pressure()))
+                    # Define Altitude
+                    altitude = ('{0:0.2f} m'.format(sensor.read_altitude()))
+                    # Write to LCD screen
+                    lcd.text("Altitude: ", 1)
+                    lcd.text(altitude, 2)
+                    # break # Uncomment to send code once, leaving this and the line below commented will loop forever
+                    #self._state = State.Inter
+                case State.Inter:
+                    # Using a state to wait for a specific condition (Wait until run time is over 1 second)
+                    # Doesn't do anything until then
+                    if time.time() - self._start_time > 1:
+                        print("Condition met, moving to State2")
+                        self._state = State.State2
+                case State.State2:
+                    # Using a state to always do something until a condition is met
+                    print("Still in State2")
+                    # Only change when condition is met (Wait until run time is over 2 seconds)
+                    if time.time() - self._start_time > 2:
+                        self._state = State.Final
+                case State.Final:
+                    print("State machine finished :)")
+                    # Break out of while loop
+                    break
